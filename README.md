@@ -62,6 +62,11 @@ Alternatively, you can also specify each required files/folder:
 
     ./real_time_modal_sound_bin -m <obj_file> -s <modes_file> -t <material_file> -p <ffat_maps_folder>
 
+
+### Windows 
+The run folder is in build/, so put models in there. 
+Press shift to apply force for gaussian/ point force.
+
 ## Known issues
 
 #### `fatal error: 'google/protobuf/port_def.inc' file not found`

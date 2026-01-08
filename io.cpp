@@ -7,30 +7,29 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 #include "io.h"
 #include <string>
-#include <dirent.h>
+// #include <dirent.h>
+#include <filesystem>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <iostream>
+namespace fs = std::filesystem;
 //##############################################################################
 namespace Gpu_Wavesolver {
 //##############################################################################
 void ListDirFiles(const char *dirname, std::vector<std::string> &names,
     const char *contains) {
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir(dirname)) != NULL) {
-        /* print all the files and directories within directory */
-        while ((ent = readdir (dir)) != NULL) {
-            std::string f = dirname + std::string("/") + std::string(ent->d_name);
-            if (IsFile(f.c_str()) && (ent->d_name[0] != '.') &&
-                (contains && f.find(std::string(contains)) != std::string::npos))
-                names.push_back(f);
+    try {
+        for (const auto& entry : fs::directory_iterator(dirname)) {
+            if (!entry.is_regular_file()) continue;
+            std::string f = entry.path().string();
+            std::string fname = entry.path().filename().string();
+            if (fname.empty() || fname[0] == '.') continue;
+            if (contains && std::string(f).find(std::string(contains)) == std::string::npos) continue;
+            names.push_back(f);
         }
-        closedir (dir);
-    } else {
-        /* could not open directory */
-        perror ("");
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error opening directory: " << e.what() << std::endl;
     }
 }
 //##############################################################################

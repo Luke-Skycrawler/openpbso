@@ -1,7 +1,11 @@
 #include <set>
 #include <ctime>
 #include <thread>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <pthread.h>
+#endif
 #include <string>
 #include <deque>
 #include <chrono>
@@ -18,6 +22,11 @@
 #include "igl/file_dialog_open.h"
 #include "igl/colormap.h"
 #include "igl/png/readPNG.h"
+#include "igl/look_at.h"
+#include "igl/ortho.h"
+#include "igl/PI.h"
+#include "igl/frustum.h"
+#include "glfw/glfw3.h"
 #include "imgui/imgui.h"
 #include "config.h"
 #include "ModalMaterial.h"
@@ -534,9 +543,14 @@ int main(int argc, char **argv) {
             }
         }
     });
+    #ifdef _WIN32
+    HANDLE h = (HANDLE)threadSim.native_handle();
+    SetThreadPriority(h, THREAD_PRIORITY_TIME_CRITICAL);
+    #else
     sched_param sch_params;
     sch_params.sched_priority = sched_get_priority_max(SCHED_FIFO);
     pthread_setschedparam(threadSim.native_handle(), SCHED_FIFO, &sch_params);
+    #endif
 
     // setup audio callback stuff
     CHECK_PA_LAUNCH(Pa_Initialize());

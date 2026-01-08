@@ -12,6 +12,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#define M_PI 3.14159265358979323846
 //##############################################################################
 // ModeData: Simple data structure for storing modal displacements and
 //           frequencies
