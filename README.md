@@ -64,9 +64,9 @@ Alternatively, you can also specify each required files/folder:
 
 
 ### Windows 
-The run folder is in build/, so put models in there. 
-Press shift to apply force for gaussian/ point force.
-
+- The run folder is in build/, so put models in there. 
+- Press shift to apply force for gaussian/ point force.
+- d is the shortcut for repeat hit 
 ## Known issues
 
 #### `fatal error: 'google/protobuf/port_def.inc' file not found`

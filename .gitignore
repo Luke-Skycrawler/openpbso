@@ -6,3 +6,4 @@ assets
 /frontend
 nbuild/
 model*/
+external/HouGeoIO/
