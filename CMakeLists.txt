@@ -39,3 +39,14 @@ foreach(TOOL_NAME ${TOOLS})
         protobuf::libprotobuf)
     target_include_directories(${TOOL_BIN} PRIVATE external/HouGeoIO/src external/HouGeoIO/extern)
 endforeach()
+
+
+target_precompile_headers(seq_viewer_bin PRIVATE
+    <igl/opengl/glfw/Viewer.h>
+    <portaudio.h>
+    <igl/read_triangle_mesh.h>
+    <igl/per_vertex_normals.h>
+    <igl/opengl/glfw/imgui/ImGuiMenu.h>
+    "ffat_map.pb.h"
+)
+
