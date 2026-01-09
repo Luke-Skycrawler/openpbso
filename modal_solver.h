@@ -18,6 +18,9 @@
 #include "ffat_solver.h"
 #include "ffat_map_serialize.h"
 #include "forces.h"
+#include "ModeData.h"
+#include "ModalMaterial.h"
+#include "forces.h"
 //##############################################################################
 template<typename T>
 struct DataMessage {
@@ -398,4 +401,140 @@ bool ModalSolver<T, BUF_SIZE>::dequeueArprmMessage(
     return _queue_arprm.try_dequeue(mess);
 }
 //##############################################################################
+template<typename T>
+void GetModalForceCopy(
+    const ForceMessage<T> &cache,
+    ForceMessage<T> &force) {
+    // perform a deep copy
+    force = cache;
+    // force.forceType = VIEWER_SETTINGS.forceType;
+    force.forceType = ForceType::PointForce;
+    if (force.forceType == ForceType::PointForce) {
+        force.force.reset(new PointForce<T>());
+    }
+    else if (force.forceType == ForceType::GaussianForce) {
+        // force.force.reset(new GaussianForce<T>(
+        //             VIEWER_SETTINGS.gaussianForceParameters.timeScale));
+    }
+    else if (force.forceType == ForceType::AutoregressiveForce) {
+        force.force.reset(new AutoregressiveForce<T>());
+    }
+    else {
+        assert(false && "Force type not defined");
+    }
+}
+//##############################################################################
+template<typename T>
+void GetModalForceFace(
+    const int forceDim,
+    const ModeData<T> &modes,
+    const Eigen::Vector3i vids,
+    const Eigen::Vector3d coords,
+    const Eigen::Vector3d &vn, // NOTE: using the same vn for all three vids
+    ForceMessage<double> &force) {
+    force.data.setZero(forceDim);
+    for (int mm=0; mm<forceDim; ++mm) {
+        for (int jj=0; jj<3; ++jj) {
+            force.data(mm) += vn[0]*modes.mode(mm).at(vids[jj]*3+0)*coords[jj]
+                            + vn[1]*modes.mode(mm).at(vids[jj]*3+1)*coords[jj]
+                            + vn[2]*modes.mode(mm).at(vids[jj]*3+2)*coords[jj];
+        }
+    }
+    // force.forceType = VIEWER_SETTINGS.forceType;
+    force.forceType = ForceType::PointForce;
+    if (force.forceType == ForceType::PointForce) {
+        force.force.reset(new PointForce<T>());
+    }
+    else if (force.forceType == ForceType::GaussianForce) {
+        // force.force.reset(new GaussianForce<T>(
+        //             VIEWER_SETTINGS.gaussianForceParameters.timeScale));
+    }
+    else if (force.forceType == ForceType::AutoregressiveForce) {
+        force.force.reset(new AutoregressiveForce<T>());
+    }
+    else {
+        assert(false && "Force type not defined");
+    }
+}
+//##############################################################################
+template<typename T>
+void GetModalForceVertex(
+    const int forceDim,
+    const ModeData<T> &modes,
+    const int vid,
+    const Eigen::Vector3d &vn,
+    ForceMessage<double> &force) {
+    force.data.setZero(forceDim);
+    for (int mm=0; mm<forceDim; ++mm) {
+        force.data(mm) = vn[0]*modes.mode(mm).at(vid*3+0)
+            + vn[1]*modes.mode(mm).at(vid*3+1)
+            + vn[2]*modes.mode(mm).at(vid*3+2);
+    }
+    // force.forceType = VIEWER_SETTINGS.forceType;
+    force.forceType = ForceType::PointForce;
+    if (force.forceType == ForceType::PointForce) {
+        force.force.reset(new PointForce<T>());
+    }
+    else if (force.forceType == ForceType::GaussianForce) {
+        // force.force.reset(new GaussianForce<T>(
+        //             VIEWER_SETTINGS.gaussianForceParameters.timeScale));
+    }
+    else if (force.forceType == ForceType::AutoregressiveForce) {
+        force.force.reset(new AutoregressiveForce<T>());
+    }
+    else {
+        assert(false && "Force type not defined");
+    }
+}
+//##############################################################################
+template<typename T>
+ModalMaterial<T> *ReadMaterial(const char *filename) {
+    return ModalMaterial<T>::Read(filename);
+}
+//##############################################################################
+template<typename T>
+ModeData<T> *ReadModes(const char *filename) {
+    ModeData<T> *modes = new ModeData<T>();
+    modes->read(filename);
+    return modes;
+}
+//##############################################################################
+template<typename T>
+ModalSolver<T> *BuildSolver(
+    const std::unique_ptr<ModalMaterial<T>> &material,
+    const std::unique_ptr<ModeData<T>> &modes,
+    const std::string &ffatMapFolder,
+    int &N_modesAudible) {
+    // read max frequency to cull modes
+    std::string maxFreqFile =
+        ffatMapFolder + "/freq_threshold.txt";
+    std::ifstream stream(maxFreqFile.c_str());
+    N_modesAudible = modes->numModes();
+    if (stream) {
+        std::string line;
+        std::getline(stream, line);
+        std::istringstream iss(line);
+        double maxFreq;
+        iss >> maxFreq;
+        N_modesAudible = modes->numModesAudible(material->density, maxFreq);
+    } else { // set default frequency to 20kHz
+        N_modesAudible = modes->numModesAudible(material->density, 20000.);
+    }
+    // build integrator and then set it for solver
+    ModalSolver<T> *solver = new ModalSolver<T>(N_modesAudible);
+    std::shared_ptr<ModalIntegrator<double>> integrator(
+        ModalIntegrator<double>::Build(
+            material->density,
+            modes->_omegaSquared,
+            material->alpha,
+            material->beta,
+            1./(double)SAMPLE_RATE,
+            N_modesAudible
+        )
+    );
+    solver->setIntegrator(integrator);
+    solver->readFFATMaps(ffatMapFolder);
+    return solver;
+}
+
 #endif
