@@ -89,27 +89,10 @@ void player_load(
 }
 
 int main(int argc, char** argv) {
-    // create viewer
-    igl::opengl::glfw::Viewer viewer;
-    viewer.core().is_animating = true;
-    unsigned main_view;
-    int obj_id;
-    viewer.callback_init = [&](igl::opengl::glfw::Viewer &viewer) -> bool {
-        // main viewport visualize the simulation sequence
-        viewer.core().viewport = Eigen::Vector4f(0, 0, 1280, 800);
-        main_view = viewer.core_list[0].id; 
-        obj_id = viewer.data_list[0].id;
-        return false;
-    };
-    viewer.callback_post_resize = [&](
-            igl::opengl::glfw::Viewer &v, int w, int h) {
-        v.core(main_view).viewport = Eigen::Vector4f(0, 0, w, h);
-        return true;
-    };
 
 
     // const string mat_file = "model_502009/502009_material.txt", mod_file = "model_502009/502009_eurf.modes", fat_path = "model_502009/502009_ffat_maps";
-    const string mat_file = "model_00000/00000_material.txt", mod_file = "model_00000/00000_eurf.modes", fat_path = "model_00000/00000_ffat_maps";
+    const string mat_file = "model_00000/00000_material.txt", mod_file = "model_00000/00000_surf.modes", fat_path = "model_00000/00000_ffat_maps";
     int N_modesAudible;
     std::unique_ptr<ModalMaterial<double>> material(ReadMaterial<double>(
         mat_file.c_str()));
@@ -153,8 +136,26 @@ int main(int argc, char** argv) {
         PaModalCallback,   /* audio callback function */
         &paData ));        /* audio callback data */
 
-    igl::opengl::glfw::imgui::ImGuiMenu menu;
     globals.frame = 0;
+
+    // create viewer
+    igl::opengl::glfw::Viewer viewer;
+    igl::opengl::glfw::imgui::ImGuiMenu menu;
+    viewer.core().is_animating = true;
+    unsigned main_view;
+    int obj_id;
+    viewer.callback_init = [&](igl::opengl::glfw::Viewer &viewer) -> bool {
+        // main viewport visualize the simulation sequence
+        viewer.core().viewport = Eigen::Vector4f(0, 0, 1280, 800);
+        main_view = viewer.core_list[0].id; 
+        obj_id = viewer.data_list[0].id;
+        return false;
+    };
+    viewer.callback_post_resize = [&](
+            igl::opengl::glfw::Viewer &v, int w, int h) {
+        v.core(main_view).viewport = Eigen::Vector4f(0, 0, w, h);
+        return true;
+    };
     viewer.plugins.push_back(&menu);
     menu.callback_draw_viewer_menu = [&]()
     {
@@ -196,6 +197,15 @@ int main(int argc, char** argv) {
         ForceMessage<double> force;
         GetModalForceVertex(N_modesAudible, *modes, 0, vn, force); 
         solver->enqueueForceMessageNoFail(force);
+        return false;
+    };
+    viewer.callback_post_draw = [&](igl::opengl::glfw::Viewer &viewer) -> bool
+    {
+        if (!globals.PA_STREAM_STARTED)
+        {
+            CHECK_PA_LAUNCH(Pa_StartStream(stream));
+            globals.PA_STREAM_STARTED = true;
+        }
         return false;
     };
     viewer.launch(true, false, "Simulation Viewer");
